@@ -41,6 +41,7 @@
 *.su
 *.idb
 *.pdb
+*.json
 
 # Kernel Module Compile Results
 *.mod*
@@ -51,3 +52,4 @@ Module.symvers
 Mkfile.old
 dkms.conf
 .vscode/
+.DS_Store
