@@ -54,3 +54,5 @@ dkms.conf
 .vscode/
 Debug/
 .DS_Store
+.DS_Store
+Core/.DS_Store
