@@ -58,6 +58,19 @@ UART_HandleTypeDef huart3;
 UART_HandleTypeDef huart6;
 
 /* USER CODE BEGIN PV */
+/*
+ * I2C1 - temp/hum
+ *
+ * SPI1 - 9DOF
+ * SPI2 - MS5607
+ *
+ * huart1 - GNSS
+ * huart2 - USB
+ * huart3 - SD
+ * huart4 - x
+ * huart5 - tRF
+ * huart6 - x
+ */
 uint16_t DataRecieved = 0; //delka prijatych zprav
 uint8_t GPSbuffer[600] = {};
 uint8_t GPSbuffer1[600] = {};
@@ -298,7 +311,7 @@ int main(void)
 
 
 
-  hal_st1 = HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer));
+  hal_st1 = HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer)); //TODO - why is calling it twice needed?
   hal_st1 = HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer));
 
 
