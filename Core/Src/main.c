@@ -72,8 +72,7 @@ UART_HandleTypeDef huart6;
  * huart6 - x
  */
 uint16_t DataRecieved = 0; //delka prijatych zprav
-uint8_t GPSbuffer[600] = {};
-uint8_t GPSbuffer1[600] = {};
+uint8_t GPSbuffer[2000] = {};
 HAL_StatusTypeDef hal_st1, hal_st2;
 /* USER CODE END PV */
 
@@ -97,8 +96,7 @@ static void MX_USART6_UART_Init(void);
 // Reverses a string 'str' of length 'len'
 //void parseRMC(uint8_t in[][11], uint8_t size)
 
-void reverse(char* str, int len)
-{
+void reverse(char* str, int len){
     int i = 0, j = len - 1, temp;
     while (i < j) {
         temp = str[i];
@@ -114,8 +112,7 @@ void reverse(char* str, int len)
 // If d is more than the number of digits in x,
 // then 0s are added at the beginning.
 
-int intToStr(int x, char str[], int d)
-{
+int intToStr(int x, uint8_t str[], int d){
     int i = 0;
     if(x<0)
         x = x*-1;
@@ -134,8 +131,7 @@ int intToStr(int x, char str[], int d)
     return i;
 }
 
-void ftoa(float n, char* res, int beforepoint, int afterpoint, char sign)
-{
+void ftoa(float n, char* res, int beforepoint, int afterpoint, uint8_t sign){
     // Extract integer part
     short isnegative = 0;
     if(n<0)
@@ -168,10 +164,6 @@ void ftoa(float n, char* res, int beforepoint, int afterpoint, char sign)
     }
 }
 
-/*void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-	HAL_UART_Receive_IT(&huart2, buff, sizeof(buff));
-}*/
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 	//HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 	DataRecieved = Size;
@@ -183,13 +175,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
 	uint32_t er = huart->ErrorCode;
 }
-
-
-
-/*void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
-	DataRecieved = 1;
-}*/
-
 
 void parseFrame(uint8_t* GPSparse, uint8_t* msg, uint8_t* framelen, uint8_t nframes, uint8_t maxlen, uint8_t linenumber){
     int parsepos = 0;
@@ -225,6 +210,79 @@ void mainParse(uint8_t* buffer, uint8_t* parse, uint8_t linelen, uint8_t* nsat){
 	}
 }
 
+void ToggleLed(uint8_t colour){
+	  switch (colour) {
+		case 'R':
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_15);
+			break;
+		case 'G':
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+			break;
+		case 'B':
+			HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_14);
+			break;
+		case 'Y':
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+			break;
+		case 'O':
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_4);
+			break;
+		default:
+			break;
+	}
+}
+
+void SetLed(uint8_t colour){
+	  switch (colour) {
+		case 'R':
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
+			break;
+		case 'G':
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+			break;
+		case 'B':
+			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET);
+			break;
+		case 'Y':
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+			break;
+		case 'O':
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
+			break;
+		default:
+			break;
+	}
+}
+
+void ResetLed(uint8_t colour){
+	  switch (colour) {
+		case 'R':
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
+			break;
+		case 'G':
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+			break;
+		case 'B':
+			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
+			break;
+		case 'Y':
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+			break;
+		case 'O':
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+			break;
+		default:
+			break;
+	}
+}
+
+void filter(int16_t *buffer, int16_t *raw, float *beta){
+			buffer[0] = buffer[0] + (beta[0]*(raw[0] - buffer[0]));
+			buffer[1] = buffer[1] + (beta[0]*(raw[1] - buffer[1]));
+			buffer[2] = buffer[2] + (beta[0]*(raw[2] - buffer[2]));
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -240,7 +298,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -271,12 +329,9 @@ int main(void)
   Am2320_HandleTypeDef Am2320_;
   Am2320_ = am2320_Init(&hi2c1, AM2320_ADDRESS);
 
-  MS5607StateTypeDef state;
-  state = MS5607_Init(&hspi2, GPIOC, GPIO_PIN_3);
-  int32_t MSpressure = 0;
-  double MStemp = 0;
+  MS5607StateTypeDef MSstate;
+  MSstate = MS5607_Init(&hspi2, GPIOC, GPIO_PIN_3);
 
-  float temperature, humidity;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -285,38 +340,34 @@ int main(void)
 
 
 
+  SetLed('R'); //R
+  HAL_Delay(50);
+  SetLed('G'); //G
+  HAL_Delay(50);
+  SetLed('B'); //B
+  HAL_Delay(50);
+  SetLed('Y');  //Y
+  HAL_Delay(50);
+  SetLed('O');  //O
+  HAL_Delay(50);
 
-
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET); //R
-  HAL_Delay(50);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET); //G
-  HAL_Delay(50);
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET);  //B
-  HAL_Delay(50);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);  //Y
-  HAL_Delay(50);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);  //O
-  HAL_Delay(50);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
+  ResetLed('R'); //R
   HAL_Delay(10);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+  ResetLed('G'); //G
   HAL_Delay(10);
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_RESET);
+  ResetLed('B'); //B
   HAL_Delay(10);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+  ResetLed('Y'); //Y
   HAL_Delay(10);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+  ResetLed('O');  //O
+  HAL_Delay(10);
 
-
-
+  int16_t AccData[3] = {}, GyroData[3] = {}, MagData[3] = {},AccFilt[3] = {}, AccMin = 0;
+  float beta = 0.3;
 
 
   hal_st1 = HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer)); //TODO - why is calling it twice needed?
   hal_st1 = HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer));
-
-
-
-
 
     while (1)
     {
@@ -324,31 +375,47 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
+    //Variables
+    	uint8_t GPSparse[15][200] = {}; //NMEA rozdelena podle radku
+    	uint8_t nsat = 0; //pocet GSV zprav
+
+		uint8_t RMCposition[13] = {}; //delka daneho pole v RMC
+		uint8_t RMC[13][11] = {}; //RMC buffer, GPS na 3,4,5,6
+
+		uint8_t VTGposition[10] = {}; //delka daneho pole v RMC
+		uint8_t VTG[10][10] = {}; 	//VTG buffer
+
+		uint8_t GGAposition[15] = {}; //delka daneho pole v RMC
+		uint8_t GGA[15][11] = {};	//GGA buffer
+
+		uint8_t GSAposition[18] = {}; //delka daneho pole v RMC
+		uint8_t GSA[18][5] = {}; //GSA buffer
+
+		uint8_t GLLposition[8] = {}; //delka daneho pole v RMC
+		uint8_t GLL[8][11] = {}; //GLL buffer
+
+
+		int32_t MSpressure = 0;
+		double MStemp = 0;
+
+		float AMtemp, AMhum;
+
+		uint8_t RXbuffer[200] = {[0 ... 199] = ';'}; //Buffer na radiovy spoj UART3
+
+		uint8_t AMtempchar[5];
+		uint8_t AMhumchar[5];
+
+		uint8_t MStempchar[7];
+		uint8_t MSpressurechar[7];
+
 
 
 		if(DataRecieved){
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET); //R
-			uint8_t GPSparse[15][200] = {}; //NMEA rozdelena podle radku
-			uint8_t nsat = 0; //pocet GSV zprav
+			SetLed('R'); //R
 
 			mainParse(GPSbuffer, GPSparse, 200, &nsat);
 
-	//PARSOVANI JEDNOTLIVYCH FRAMU
-
-			uint8_t RMCposition[13] = {}; //delka daneho pole v RMC
-			uint8_t RMC[13][11] = {}; //RMC buffer, GPS na 3,4,5,6
-
-			uint8_t VTGposition[10] = {}; //delka daneho pole v RMC
-			uint8_t VTG[10][10] = {}; 	//VTG buffer
-
-			uint8_t GGAposition[15] = {}; //delka daneho pole v RMC
-			uint8_t GGA[15][11] = {};	//GGA buffer
-
-			uint8_t GSAposition[18] = {}; //delka daneho pole v RMC
-			uint8_t GSA[18][5] = {}; //GSA buffer
-
-			uint8_t GLLposition[8] = {}; //delka daneho pole v RMC
-			uint8_t GLL[8][11] = {}; //GLL buffer
+	//INDIVIDUAL FRAMES PARSING
 
 			parseFrame(GPSparse, RMC, RMCposition, 13, 11, 0);
 			parseFrame(GPSparse, VTG, VTGposition, 10, 10, 1);
@@ -356,41 +423,29 @@ int main(void)
 			parseFrame(GPSparse, GSA, GSAposition, 18, 5, 3);
 			parseFrame(GPSparse, GLL, GLLposition, 8, 11, 4+nsat);
 
+//Reading from sensors
 
-		//PARSOVANI GSV
-			//TODO
-			//uint8_t GSV[3][17][15] = {}; //GSV buffer
+		//AM2320 Temp & Hum read
+			am2320_GetTemperatureAndHumidity(&Am2320_, &AMtemp, &AMhum);
 
-
-
-		//Cteni teploty
-			am2320_GetTemperatureAndHumidity(&Am2320_, &temperature, &humidity);
-		//Cteni z Gyra
-			int16_t AccData[3] = {}, GyroData[3] = {}, MagData[3] = {};
-			MPU9250_GetData(AccData, GyroData, MagData);
-			char AccStr[3][5]={}, GyroStr[3][5]={}, MagStr[3][5]={};
-
-			for(int i = 0; i < 3; i++){
-				itoa(AccData[i], AccStr[i], 10);
-			}
-
-			for(int i = 0; i < 3; i++){
-				itoa(GyroData[i], GyroStr[i], 10);
-			}
-
-			for(int i = 0; i < 3; i++){
-				itoa(MagData[i], MagStr[i], 10);
-			}
-		  //Teplota Tlak
+		//MS5607 Temp Pressure read
 			MS5607Update();
 			HAL_Delay(10);
 			MSpressure = MS5607GetPressurePa();
 			MStemp = MS5607GetTemperatureC();
 
 
-		//Sesiti danych poli do RX zprávy
-			uint8_t RXbuffer[200] = {[0 ... 199] = ';'}; //Buffer na radiovy spoj UART3
-			int cpypos = 0;
+		//Number to text conversion
+			ftoa(AMtemp, AMtempchar, 3, 1, 1); //pocet cislic pred teckou, za teckou a znamenko - 0/1
+			ftoa(AMhum, AMhumchar, 3, 1, 0);
+
+			ftoa((float)MStemp, MStempchar, 4, 2, 1);
+			ftoa(MSpressure, MSpressurechar, 7, 0, 1);
+
+
+
+	//Sesiti danych poli do RX zprávy
+			uint16_t cpypos = 0;
 
 			//cas
 			memcpy(RXbuffer + cpypos, RMC[1], RMCposition[1]);
@@ -411,56 +466,28 @@ int main(void)
 			cpypos = cpypos + VTGposition[7] + 1;
 
 
-			char tempchar[5];
-			char humchar[5];
-			ftoa(temperature, tempchar, 3, 1, 1); //pocet cislic pred teckou, za teckou a znamenko - 0/1
-			ftoa(humidity, humchar, 3, 1, 0);
-
-			char MStempchar[7];
-			char MSpressurechar[7];
-
-			ftoa((float)MStemp, MStempchar, 4, 2, 1);
-			ftoa(MSpressure, MSpressurechar, 7, 0, 1);
-
-			memcpy(RXbuffer + cpypos, tempchar, sizeof(tempchar));
-			cpypos = cpypos+sizeof(tempchar) + 1;
-
-			memcpy(RXbuffer + cpypos, humchar, sizeof(humchar));
-			cpypos = cpypos+sizeof(humchar) + 1;
-
 			memcpy(RXbuffer + cpypos, MStempchar, sizeof(MStempchar));
 			cpypos = cpypos+sizeof(MStempchar) + 1;
 
 			memcpy(RXbuffer + cpypos, MSpressurechar, sizeof(MSpressurechar));
 			cpypos = cpypos+sizeof(MSpressurechar) + 1;
 
-			for(int i = 0; i<3; i++){
-				memcpy(RXbuffer + cpypos, AccStr[i], sizeof(AccStr[i]));
-				cpypos = cpypos + sizeof(AccStr[i]) + 1;
-			}
-			cpypos++;
 
-			for(int i = 0; i<3; i++){
-				memcpy(RXbuffer + cpypos, GyroStr[i], sizeof(GyroStr[i]));
-				cpypos = cpypos + sizeof(GyroStr[i]) + 1;
-			}
-			cpypos++;
-
-			for(int i = 0; i<3; i++){
-				memcpy(RXbuffer + cpypos, MagStr[i], sizeof(MagStr[i]));
-				cpypos = cpypos + sizeof(MagStr[i]) + 1;
-			}
-			cpypos++;
-
-
-			memcpy(RXbuffer + cpypos, &newline, sizeof(newline));
+			//memcpy(RXbuffer + cpypos, &newline, sizeof(newline));
 
 			HAL_UART_Transmit(&huart5, RXbuffer, cpypos+1, HAL_MAX_DELAY);
 			HAL_UART_Transmit(&huart5, &newline, 1, HAL_MAX_DELAY);
 
+
 		//Sesiti danych poli do SD zpravy
 			uint8_t SDbuffer[300] = {[0 ... 298] = ';', '\n'}; //Buffer pro ukladani dat na SD kartu
 			memcpy(SDbuffer, RXbuffer, cpypos); //kopirovani RX bufferu
+
+			memcpy(RXbuffer + cpypos, AMtempchar, sizeof(AMtempchar));
+			cpypos = cpypos+sizeof(AMtempchar) + 1;
+
+			memcpy(RXbuffer + cpypos, AMhumchar, sizeof(AMhumchar));
+			cpypos = cpypos+sizeof(AMhumchar) + 1;
 
 			//fix type
 			memcpy(SDbuffer + cpypos, GGA[6], GGAposition[6]);
@@ -485,22 +512,21 @@ int main(void)
 
 			HAL_UART_Transmit(&huart3, SDbuffer, cpypos-1, HAL_MAX_DELAY);
 
+
 			//Cisteni
 			memset(RXbuffer, 0, sizeof(RXbuffer));
 			memset(GPSbuffer, 0, sizeof(GPSbuffer));
 			DataRecieved = 0;
 
-			//hal_st1 = HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer)); //init ToIdle interruptu
-			//HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer));
-
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
-
-			//HAL_UARTEx_ReceiveToIdle_IT(&huart6, GPSbuffer1, sizeof(GPSbuffer1));
-
-
 
 		}
 		hal_st1 = HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer));
+		MPU9250_GetData(AccData, GyroData, MagData);
+		filter(AccFilt, AccData, &beta);
+		if(AccFilt[2] < AccMin){
+			AccMin = AccFilt;
+		}
 
     }
   /* USER CODE END 3 */
