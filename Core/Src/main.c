@@ -96,7 +96,7 @@ static void MX_USART6_UART_Init(void);
 // Reverses a string 'str' of length 'len'
 //void parseRMC(uint8_t in[][11], uint8_t size)
 
-void reverse(char* str, int len){
+void reverse(uint8_t* str, int len){
     int i = 0, j = len - 1, temp;
     while (i < j) {
         temp = str[i];
@@ -131,7 +131,7 @@ int intToStr(int x, uint8_t str[], int d){
     return i;
 }
 
-void ftoa(float n, char* res, int beforepoint, int afterpoint, uint8_t sign){
+void ftoa(float n, uint8_t* res, int beforepoint, int afterpoint, uint8_t sign){
     // Extract integer part
     short isnegative = 0;
     if(n<0)
@@ -336,7 +336,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int8_t newline = '\n';
+  uint8_t newline = '\n';
 
 
 
@@ -362,7 +362,7 @@ int main(void)
   ResetLed('O');  //O
   HAL_Delay(10);
 
-  int16_t AccData[3] = {}, GyroData[3] = {}, MagData[3] = {},AccFilt[3] = {}, AccMin = 0;
+  int16_t AccData[3] = {}, GyroData[3] = {}, MagData[3] = {},AccFilt[3] = {0, 0, 10000}, AccMin = 10000;
   float beta = 0.3;
 
 
@@ -434,6 +434,22 @@ int main(void)
 			MSpressure = MS5607GetPressurePa();
 			MStemp = MS5607GetTemperatureC();
 
+			uint8_t AccStr[3][6]={}, GyroStr[3][6]={}, MagStr[3][5]={}, AccMinStr[6] = {};
+
+			for(int i = 0; i < 3; i++){
+				itoa(AccData[i], AccStr[i], 10);
+			}
+
+			for(int i = 0; i < 3; i++){
+				itoa(GyroData[i], GyroStr[i], 10);
+			}
+
+			for(int i = 0; i < 3; i++){
+				itoa(MagData[i], MagStr[i], 10);
+			}
+
+			itoa(AccMin, AccMinStr, 10);
+
 
 		//Number to text conversion
 			ftoa(AMtemp, AMtempchar, 3, 1, 1); //pocet cislic pred teckou, za teckou a znamenko - 0/1
@@ -483,10 +499,10 @@ int main(void)
 			uint8_t SDbuffer[300] = {[0 ... 298] = ';', '\n'}; //Buffer pro ukladani dat na SD kartu
 			memcpy(SDbuffer, RXbuffer, cpypos); //kopirovani RX bufferu
 
-			memcpy(RXbuffer + cpypos, AMtempchar, sizeof(AMtempchar));
+			memcpy(SDbuffer + cpypos, AMtempchar, sizeof(AMtempchar));
 			cpypos = cpypos+sizeof(AMtempchar) + 1;
 
-			memcpy(RXbuffer + cpypos, AMhumchar, sizeof(AMhumchar));
+			memcpy(SDbuffer + cpypos, AMhumchar, sizeof(AMhumchar));
 			cpypos = cpypos+sizeof(AMhumchar) + 1;
 
 			//fix type
@@ -507,17 +523,35 @@ int main(void)
 			memcpy(SDbuffer + cpypos, GSA[17], GSAposition[17]);
 			cpypos = cpypos + GSAposition[17] + 1;
 
-			memcpy(SDbuffer + cpypos, &newline, sizeof(newline));
-			cpypos = cpypos + 2;
+			memcpy(SDbuffer + cpypos, AccMinStr, sizeof(AccMinStr));
+			cpypos = cpypos + sizeof(AccMinStr) + 1;
 
-			HAL_UART_Transmit(&huart3, SDbuffer, cpypos-1, HAL_MAX_DELAY);
+			for(int i = 0; i<3; i++){
+				memcpy(SDbuffer + cpypos, AccStr[i], sizeof(AccStr[i]));
+				cpypos = cpypos + sizeof(AccStr[i]) + 1;
+			}
+
+			for(int i = 0; i<3; i++){
+				memcpy(SDbuffer + cpypos, GyroStr[i], sizeof(GyroStr[i]));
+				cpypos = cpypos + sizeof(GyroStr[i]) + 1;
+			}
+
+			for(int i = 0; i<3; i++){
+				memcpy(SDbuffer + cpypos, MagStr[i], sizeof(MagStr[i]));
+				cpypos = cpypos + sizeof(MagStr[i]) + 1;
+			}
+
+			memcpy(SDbuffer + cpypos, &newline, sizeof(newline));
+			cpypos = cpypos + sizeof(newline);
+
+			HAL_UART_Transmit(&huart3, SDbuffer, cpypos, HAL_MAX_DELAY);
 
 
 			//Cisteni
 			memset(RXbuffer, 0, sizeof(RXbuffer));
 			memset(GPSbuffer, 0, sizeof(GPSbuffer));
 			DataRecieved = 0;
-
+			AccMin = 10000; //reset min value
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
 
 		}
@@ -525,7 +559,7 @@ int main(void)
 		MPU9250_GetData(AccData, GyroData, MagData);
 		filter(AccFilt, AccData, &beta);
 		if(AccFilt[2] < AccMin){
-			AccMin = AccFilt;
+			AccMin = AccFilt[2];
 		}
 
     }

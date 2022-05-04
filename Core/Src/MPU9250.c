@@ -246,8 +246,8 @@ uint8_t MPU9250_Init()
 	// enable accelerometer and gyro
 	writeRegister(PWR_MGMNT_2,SEN_ENABLE);
 
-	// setting accel range to 16G as default
-	writeRegister(ACCEL_CONFIG,ACCEL_FS_SEL_16G);
+	// setting accel range to 16G as default //changed to 4G
+	writeRegister(ACCEL_CONFIG,ACCEL_FS_SEL_4G);
 
 	// setting the gyro range to 2000DPS as default
 	writeRegister(GYRO_CONFIG,GYRO_FS_SEL_250DPS);
