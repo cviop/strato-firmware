@@ -48,6 +48,8 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+IWDG_HandleTypeDef hiwdg;
+
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 
@@ -87,6 +89,7 @@ static void MX_UART5_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_USART6_UART_Init(void);
+static void MX_IWDG_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -298,7 +301,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -312,14 +315,15 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
   MX_I2C1_Init();
   MX_USART3_UART_Init();
   MX_UART5_Init();
   MX_SPI1_Init();
   MX_SPI2_Init();
   MX_USART6_UART_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -368,6 +372,8 @@ int main(void)
 
   hal_st1 = HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer)); //TODO - why is calling it twice needed?
   hal_st1 = HAL_UARTEx_ReceiveToIdle_IT(&huart1, GPSbuffer, sizeof(GPSbuffer));
+
+  MX_IWDG_Init();
 
     while (1)
     {
@@ -561,7 +567,7 @@ int main(void)
 		if(AccFilt[2] < AccMin){
 			AccMin = AccFilt[2];
 		}
-
+		HAL_IWDG_Refresh(&hiwdg);
     }
   /* USER CODE END 3 */
 }
@@ -582,9 +588,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 8;
@@ -642,6 +649,34 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief IWDG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_IWDG_Init(void)
+{
+
+  /* USER CODE BEGIN IWDG_Init 0 */
+
+  /* USER CODE END IWDG_Init 0 */
+
+  /* USER CODE BEGIN IWDG_Init 1 */
+
+  /* USER CODE END IWDG_Init 1 */
+  hiwdg.Instance = IWDG;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_64;
+  hiwdg.Init.Reload = 2449;
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN IWDG_Init 2 */
+
+  /* USER CODE END IWDG_Init 2 */
 
 }
 
