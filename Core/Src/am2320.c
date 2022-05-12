@@ -38,8 +38,7 @@ Am2320_HandleTypeDef am2320_Init(I2C_HandleTypeDef* i2c_handle,uint8_t device_ad
 
 uint8_t am2320_ReadValue(Am2320_HandleTypeDef *am2320) {
 	uint8_t registers[3] = { 0x03, 0x00, 0x04 };
-	HAL_I2C_Master_Transmit(am2320->i2c_handle, am2320->device_address, 0x00, 0,
-	HAL_MAX_DELAY);
+	HAL_I2C_Master_Transmit(am2320->i2c_handle, am2320->device_address, 0x00, 0,HAL_MAX_DELAY);
 	HAL_Delay(1);
 	if (HAL_I2C_Master_Transmit(am2320->i2c_handle, am2320->device_address,registers, 3, HAL_MAX_DELAY) != HAL_OK) {
 		return 1;
